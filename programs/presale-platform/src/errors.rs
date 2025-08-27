@@ -66,6 +66,12 @@ pub enum Errs {
     ExceedsHardCap,
     #[msg("Contribution is zero or below minimum")]
     BadContributionAmount,
+    #[msg("Invalid amount input")]
+    InvalidAmount,
+    #[msg("Presale not started yet")]
+    PresaleNotYetStarted,
+    #[msg("Presale ended")]
+    PresaleEnded,
 
     // ---------- Finalize / LP ----------
     #[msg("Finalize allowed only after end time or when hard cap is reached")]

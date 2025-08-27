@@ -1,4 +1,4 @@
-use crate::{state::{Presale, SolVault}};
+use crate::{state::{Presale}};
 use anchor_lang::prelude::*;
 use crate::errors::Errs;
 use anchor_spl::{

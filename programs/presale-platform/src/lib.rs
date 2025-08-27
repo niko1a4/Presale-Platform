@@ -32,4 +32,8 @@ pub mod presale_platform {
         ctx.accounts.deposit_tokens(amount_of_tokens)?;
         Ok(())
     }
+    pub fn deposit_sol(ctx: Context<DepositSol>, amount_lamports: u64) -> Result<()> {
+        ctx.accounts.deposit_sol(amount_lamports)?;
+        Ok(())
+    }
 }
