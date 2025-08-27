@@ -28,7 +28,8 @@ pub mod presale_platform {
         )?;
         Ok(())
     }
+    pub fn deposit_tokens(ctx: Context<DepositTokens>, amount_of_tokens: u64) -> Result<()> {
+        ctx.accounts.deposit_tokens(amount_of_tokens)?;
+        Ok(())
+    }
 }
-
-#[derive(Accounts)]
-pub struct Initialize {}
