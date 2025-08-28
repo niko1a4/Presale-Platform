@@ -144,7 +144,7 @@ describe("presale setup, init & deposit_tokens", () => {
     expect(presaleAcc.lpTokenMint.toBase58()).to.eq(PublicKey.default.toBase58());
     expect(presaleAcc.lpTokenVault.toBase58()).to.eq(PublicKey.default.toBase58());
 
-    // totals & flags
+    // totals 
     expect(presaleAcc.tokensDepositedPresale.toNumber()).to.eq(0);
     expect(presaleAcc.tokensDepositedLp.toNumber()).to.eq(0);
     expect(presaleAcc.solRaisedLamports.toNumber()).to.eq(0);
@@ -209,5 +209,73 @@ describe("presale setup, init & deposit_tokens", () => {
       TARGET_PRESALE_TOKENS.div(new BN(2)).toString()
     );
   });
+  it("test deposit_sol()", async () => {
+    const balance = await connection.getBalance(buyer.publicKey, "confirmed");
+    if (balance < 70 * LAMPORTS_PER_SOL) {
+      const sig = await connection.requestAirdrop(buyer.publicKey, 70 * LAMPORTS_PER_SOL);
+      await connection.confirmTransaction(sig, "confirmed");
+    }
+    const vaultBefore1 = await connection.getBalance(solVaultPda, "confirmed");
+    const presaleBefore1: any = await program.account.presale.fetch(presalePda);
+    expect(Number(presaleBefore1.solRaisedLamports)).to.eq(0);
+
+    //1) first we deposit 20 sol 
+    const firstDeposit = 20 * LAMPORTS_PER_SOL;
+    await program.methods.depositSol(
+      new BN(firstDeposit)
+    ).accounts({
+      depositor: buyer.publicKey,
+      tokenMint,
+      presale: presalePda,
+      solVault: solVaultPda,
+      systemProgam: SystemProgram.programId,
+    }).signers([buyer])
+      .rpc();
+
+    const vaultAfter1 = await connection.getBalance(solVaultPda, "confirmed");
+    expect(vaultAfter1 - vaultBefore1).to.eq(firstDeposit);
+
+    let presaleAcc: any = await program.account.presale.fetch(presalePda);
+    expect(presaleAcc.solRaisedLamports.toString()).to.eq(new BN(firstDeposit).toString());
+
+    //testing the partial fill. sending 40 sol while only 30 left until hard cap
+    const attempt = 40 * LAMPORTS_PER_SOL;
+    const remaining = new BN(HARD_CAP_LAMPORTS).sub(new BN(firstDeposit)).toNumber(); //50 - 20 = 30SOL
+
+    const vaultBefore2 = await connection.getBalance(solVaultPda, "confirmed");
+    await program.methods.depositSol(
+      new BN(attempt)
+    ).accounts({
+      depositor: buyer.publicKey,
+      tokenMint,
+      presale: presalePda,
+      solVault: solVaultPda,
+      systemProgam: SystemProgram.programId,
+    }).signers([buyer])
+      .rpc();
+
+    const vaultAfter2 = await connection.getBalance(solVaultPda, "confirmed");
+    expect(vaultAfter2 - vaultBefore2).to.eq(remaining);
+
+    presaleAcc = await program.account.presale.fetch(presalePda);
+    expect(presaleAcc.solRaisedLamports.toString()).to.eq(HARD_CAP_LAMPORTS.toString());
+
+    //after the cap all other deposits should fail
+    try {
+      await program.methods.depositSol(
+        new BN(1_000_000)
+      ).accounts({
+        depositor: buyer.publicKey,
+        tokenMint,
+        presale: presalePda,
+        solVault: solVaultPda,
+        systemProgram: SystemProgram.programId,
+      }).signers([buyer])
+        .rpc();
+      expect.fail("Revert is expected here");
+    } catch (e: any) {
+      expect(e.toString()).to.match(/custom program error|ExceedsHardCap/i);
+    }
+  })
 });
 
